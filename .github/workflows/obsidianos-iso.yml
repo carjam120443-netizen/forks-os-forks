@@ -73,3 +73,5 @@ EOF
             ObsidianOS-Installer.iso.sha256
           if-no-files-found: error
           retention-days: 30
+
+      # Trigger a fresh ISO build when this workflow is updated.
