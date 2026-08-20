@@ -14,46 +14,55 @@ jobs:
   build-iso:
     name: Build bootable ObsidianOS Installer ISO
     runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Build ISO with ArchISO
+      - name: Install ArchISO and build dependencies
         run: |
           set -euo pipefail
+          pacman -Sy --noconfirm --needed archiso curl python arch-install-scripts
+
+      - name: Prepare ArchISO profile
+        run: |
+          set -euo pipefail
+          rm -rf iso-work
           mkdir -p iso-work
-          docker run --rm --privileged \
-            -v "$PWD/iso-work:/work" \
-            archlinux:latest \
-            bash -euxo pipefail -c '
-              pacman -Sy --noconfirm --needed archiso curl
-              rm -rf /work/profile /work/out /work/build
-              cp -a /usr/share/archiso/configs/releng /work/profile
+          cp -a /usr/share/archiso/configs/releng iso-work/profile
 
-              mkdir -p /work/profile/airootfs/opt/obsidianos
-              curl -fsSL https://raw.githubusercontent.com/Obsidian-OS/obsidian-wizard/main/obsidian-wizard.py \
-                -o /work/profile/airootfs/opt/obsidianos/obsidian-wizard.py
-              chmod +x /work/profile/airootfs/opt/obsidianos/obsidian-wizard.py
+          mkdir -p iso-work/profile/airootfs/opt/obsidianos
+          curl -fsSL \
+            https://raw.githubusercontent.com/Obsidian-OS/obsidian-wizard/main/obsidian-wizard.py \
+            -o iso-work/profile/airootfs/opt/obsidianos/obsidian-wizard.py
+          chmod +x iso-work/profile/airootfs/opt/obsidianos/obsidian-wizard.py
 
-              cat > /work/profile/airootfs/usr/local/bin/obsidianos-wizard <<"EOF"
+          cat > iso-work/profile/airootfs/usr/local/bin/obsidianos-wizard <<'EOF'
 #!/bin/bash
 exec python /opt/obsidianos/obsidian-wizard.py "$@"
 EOF
-              chmod +x /work/profile/airootfs/usr/local/bin/obsidianos-wizard
+          chmod +x iso-work/profile/airootfs/usr/local/bin/obsidianos-wizard
 
-              printf "python\ncurl\narch-install-scripts\n" >> /work/profile/packages.x86_64
-              printf "ObsidianOS Installer Environment\nRun: obsidianos-wizard\n" > /work/profile/airootfs/etc/motd
+          printf '\npython\ncurl\narch-install-scripts\n' >> iso-work/profile/packages.x86_64
+          printf 'ObsidianOS Installer Environment\nRun: obsidianos-wizard\n' > iso-work/profile/airootfs/etc/motd
 
-              mkdir -p /work/out
-              mkarchiso -v -w /work/build -o /work/out /work/profile
-            '
+      - name: Build ISO with mkarchiso
+        run: |
+          set -euo pipefail
+          mkdir -p iso-work/out iso-work/build
+          mkarchiso -v -w iso-work/build -o iso-work/out iso-work/profile
 
+      - name: Verify ISO
+        run: |
+          set -euo pipefail
           ISO=$(find iso-work/out -maxdepth 1 -type f -name '*.iso' -print -quit)
           test -n "$ISO"
           cp "$ISO" ObsidianOS-Installer.iso
           sha256sum ObsidianOS-Installer.iso > ObsidianOS-Installer.iso.sha256
-          ls -lh ObsidianOS-Installer.iso
+          file ObsidianOS-Installer.iso
+          ls -lh ObsidianOS-Installer.iso ObsidianOS-Installer.iso.sha256
 
       - name: Upload bootable ISO
         uses: actions/upload-artifact@v4
