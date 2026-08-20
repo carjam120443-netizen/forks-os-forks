@@ -40,9 +40,9 @@ jobs:
           chmod +x iso-work/profile/airootfs/opt/obsidianos/obsidian-wizard.py
 
           cat > iso-work/profile/airootfs/usr/local/bin/obsidianos-wizard <<'EOF'
-#!/bin/bash
-exec python /opt/obsidianos/obsidian-wizard.py "$@"
-EOF
+          #!/bin/bash
+          exec python /opt/obsidianos/obsidian-wizard.py "$@"
+          EOF
           chmod +x iso-work/profile/airootfs/usr/local/bin/obsidianos-wizard
 
           printf '\npython\ncurl\narch-install-scripts\n' >> iso-work/profile/packages.x86_64
@@ -73,5 +73,3 @@ EOF
             ObsidianOS-Installer.iso.sha256
           if-no-files-found: error
           retention-days: 30
-
-      # Trigger a fresh ISO build when this workflow is updated.
