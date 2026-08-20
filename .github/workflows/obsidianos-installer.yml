@@ -18,22 +18,22 @@ jobs:
         run: |
           pacman -Sy --noconfirm --needed curl arch-install-scripts
 
-      - name: Download official installer
+      - name: Download official ObsidianOS Wizard
         run: |
           set -euo pipefail
-          curl -fsSL https://arbs.obsidianos.xyz -o obsidianos-installer.sh
-          test -s obsidianos-installer.sh
-          chmod +x obsidianos-installer.sh
-          echo "Official ObsidianOS installer downloaded successfully."
+          curl -fsSL https://raw.githubusercontent.com/Obsidian-OS/obsidian-wizard/main/obsidian-wizard.py -o obsidian-wizard.py
+          test -s obsidian-wizard.py
+          chmod +x obsidian-wizard.py
+          echo "Official ObsidianOS wizard downloaded successfully."
 
-      - name: Check installer
+      - name: Check wizard
         run: |
-          head -n 5 obsidianos-installer.sh
-          sha256sum obsidianos-installer.sh
+          head -n 10 obsidian-wizard.py
+          sha256sum obsidian-wizard.py
 
-      - name: Upload installer artifact
+      - name: Upload wizard artifact
         uses: actions/upload-artifact@v4
         with:
-          name: obsidianos-official-installer
-          path: obsidianos-installer.sh
+          name: obsidianos-official-wizard
+          path: obsidian-wizard.py
           if-no-files-found: error
