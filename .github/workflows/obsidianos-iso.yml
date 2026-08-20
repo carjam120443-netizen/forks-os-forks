@@ -1,0 +1,60 @@
+name: Build ObsidianOS Installer ISO
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/obsidianos-iso.yml'
+      - 'iso/**'
+
+permissions:
+  contents: read
+
+jobs:
+  build-iso:
+    name: Build bootable ObsidianOS Installer ISO
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build ISO with ArchISO
+        run: |
+          set -euo pipefail
+          mkdir -p iso-work
+          docker run --rm --privileged \
+            -v "$PWD/iso-work:/work" \
+            archlinux:latest \
+            bash -euxo pipefail -c '
+              pacman -Sy --noconfirm --needed archiso curl
+              rm -rf /work/profile
+              cp -a /usr/share/archiso/configs/releng /work/profile
+              mkdir -p /work/profile/airootfs/opt/obsidianos
+              curl -fsSL https://raw.githubusercontent.com/Obsidian-OS/obsidian-wizard/main/obsidian-wizard.py -o /work/profile/airootfs/opt/obsidianos/obsidian-wizard.py
+              chmod +x /work/profile/airootfs/opt/obsidianos/obsidian-wizard.py
+              cat > /work/profile/airootfs/usr/local/bin/obsidianos-wizard <<"EOF"
+              #!/bin/bash
+              exec python /opt/obsidianos/obsidian-wizard.py "$@"
+              EOF
+              chmod +x /work/profile/airootfs/usr/local/bin/obsidianos-wizard
+              printf "python\ncurl\narch-install-scripts\n" >> /work/profile/packages.x86_64
+              printf "ObsidianOS Installer Environment\nRun: obsidianos-wizard\n" > /work/profile/airootfs/etc/motd
+              mkdir -p /work/out
+              mkarchiso -v -w /work/build -o /work/out /work/profile
+            '
+          ISO=$(find iso-work/out -maxdepth 1 -type f -name '*.iso' -print -quit)
+          test -n "$ISO"
+          cp "$ISO" ObsidianOS-Installer.iso
+          sha256sum ObsidianOS-Installer.iso > ObsidianOS-Installer.iso.sha256
+          ls -lh ObsidianOS-Installer.iso
+
+      - name: Upload bootable ISO
+        uses: actions/upload-artifact@v4
+        with:
+          name: obsidianos-installer-iso
+          path: |
+            ObsidianOS-Installer.iso
+            ObsidianOS-Installer.iso.sha256
+          if-no-files-found: error
+          retention-days: 30
