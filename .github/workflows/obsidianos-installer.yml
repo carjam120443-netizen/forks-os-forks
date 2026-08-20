@@ -1,0 +1,36 @@
+name: ObsidianOS Installer
+
+on:
+  workflow_dispatch:
+
+jobs:
+  fetch-installer:
+    name: Fetch official ObsidianOS installer
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+
+    steps:
+      - name: Install prerequisites
+        run: |
+          pacman -Sy --noconfirm --needed curl arch-install-scripts
+
+      - name: Download official installer
+        run: |
+          set -euo pipefail
+          curl -fsSL https://arbs.obsidianos.xyz -o obsidianos-installer.sh
+          test -s obsidianos-installer.sh
+          chmod +x obsidianos-installer.sh
+          echo "Official ObsidianOS installer downloaded successfully."
+
+      - name: Check installer
+        run: |
+          head -n 5 obsidianos-installer.sh
+          sha256sum obsidianos-installer.sh
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: obsidianos-official-installer
+          path: obsidianos-installer.sh
+          if-no-files-found: error
